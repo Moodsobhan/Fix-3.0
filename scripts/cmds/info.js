@@ -16,15 +16,15 @@ config: {
   onStart: async function ({ api, event }) {
   try {
     const ownerInfo = {
-      name: 'MOHAMMED ABIR',
+      name: 'SOBHAN PRIME ',
       gender: 'MALE',
-      age: '18+',
+      age: '17+',
       height: 'secret',
-      facebookLink: '⁦https://www.facebook.com/risingabir25⁩',
-      nick: 'ABIR'
+      facebookLink: '⁦https://www.facebook.com/profile.php?id=61557169379945⁩',
+      nick: '7 ✂️'
     };
 
-    const bold = '⁦https://imgur.com/a/kMvfcNr⁩'; // Replace with your Google Drive videoid link ⁦https://drive.google.com/uc?export=download&id=here⁩ put your video id
+    const bold = '⁦https://i.postimg.cc/wvR3WcVT/bb3232ca132d5356322a45b9894ad95c.jpg⁩'; // Replace with your Google Drive videoid link ⁦https://drive.google.com/uc?export=download&id=here⁩ put your video id
 
     const tmpFolderPath = path.join(__dirname, 'tmp');
 
