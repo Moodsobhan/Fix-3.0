@@ -1,69 +1,50 @@
-const axios = require("axios");
 module.exports = {
-	config: {
-		name: 'sim',
-		version: '1.2',
-		author: 'KENLIEPLAYS',
-		countDown: 3,
-		role: 0,
-		shortDescription: 'Simsimi ChatBot by Simsimi.fun',
-		longDescription: {
-			en: 'Chat with simsimi'
-		},
-		category: 'fun',
-		guide: {
-			en: '   {pn} <word>: chat with simsimi'
-				+ '\n   Example:{pn} hi'
-		}
-	},
+  config: {
+    name: "sim",
+    version: "1.0",
+    author: "Sobhan-prime",
+    shortDescription: "Toggles auto-reply on/off",
+    category: "AutoReply",
+    guide: "{p}sim on  |  {p}sim off"
+  },
 
-	langs: {
-		en: {
-			chatting: 'Already Chatting with sim...',
-			error: 'Server Down Please Be Patient'
-		}
-	},
+  // The onStart handler toggles auto-reply mode.
+  onStart: async function({ event, api, args }) {
+    const toggle = args[0] ? args[0].toLowerCase() : "";
+    if (toggle === "on") {
+      global.autoReplySim = true;
+      return api.sendMessage("Auto-reply is now ON.", event.threadID);
+    } else if (toggle === "off") {
+      global.autoReplySim = false;
+      return api.sendMessage("Auto-reply is now OFF.", event.threadID);
+    } else {
+      return api.sendMessage("Usage: sim on  OR  sim off", event.threadID);
+    }
+  },
 
-	onStart: async function ({ args, message, event, getLang }) {
-		if (args[0]) {
-			const yourMessage = args.join(" ");
-			try {
-				const responseMessage = await getMessage(yourMessage);
-				return message.reply(`${responseMessage}`);
-			}
-			catch (err) {
-				console.log(err)
-				return message.reply(getLang("error"));
-			}
-		}
-	},
+  // The onChat handler auto-replies to every message when enabled.
+  onChat: async function({ event, message }) {
+    try {
+      if (!global.autoReplySim) return;  // Only reply if auto-reply is enabled.
+      if (event.senderID === global.botID) return; // Avoid self-reply loops.
 
-	onChat: async ({ args, message, threadsData, event, isUserCallCommand, getLang }) => {
-		if (!isUserCallCommand) {
-			return;
-		}
-		if (args.length > 1) {
-			try {
-				const langCode = await threadsData.get(event.threadID, "settings.lang") || global.GoatBot.config.language;
-				const responseMessage = await getMessage(args.join(" "), langCode);
-				return message.reply(`${responseMessage}`);
-			}
-			catch (err) {
-				return message.reply(getLang("error"));
-			}
-		}
-	}
+      const prefix = global.config.PREFIX || "";  
+      const msgText = event.body ? event.body.toLowerCase().trim() : "";
+      if (msgText.startsWith(prefix + "sim")) return; // Ignore sim commands
+
+      // Check conditions and reply accordingly.
+      if (msgText.includes("asalamualikum")) {
+        message.reply("walikumasalam");
+      } else if (msgText.includes("kemon aso")) {
+        message.reply("kono moto baicha asi bot er jibon 6h pore pore off hoiya jai");
+      } else if (msgText.includes("kire shayan koi")) {
+        message.reply("Shayan hagte gase mama!!!!");
+      } else {
+        message.reply("Sim, I am here!");
+      }
+    }
+    catch (error) {
+      console.error("Error in auto-reply onChat:", error);
+    }
+  }
 };
-
-async function getMessage(yourMessage, langCode) {
-	try {
-		const res = await axios.get(`https://simsimi.fun/api/v2/?mode=talk&lang=en&message=${yourMessage}&filter=false`);
-		if (!res.data.success) {
-			throw new Error('API returned a non-successful message');
-		}
-		return res.data.success;
-	} catch (err) {
-		console.error('Error while getting a message:', err);
-		throw err;
-	}
-                 }
