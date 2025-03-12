@@ -1,9 +1,10 @@
 const axios = require("axios");
 const fs = require("fs-extra");
 const { getStreamFromURL } = global.utils;
+
 const baseApiUrl = async () => {
   const base = await axios.get(
-`https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`,
+    `https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`
   );
   return base.data.api;
 };
@@ -22,7 +23,7 @@ module.exports = {
     category: "media",
     guide: {
       en: "{pn} [<song name>|<song link>]: use to download audio from YouTube" + "\n   Example:"
-        + "\n{pn} chipi chipi chapa chapa"
+         + "\n{pn} chipi chipi chapa chapa"
     }
   },
   langs: {
@@ -35,13 +36,54 @@ module.exports = {
     }
   },
   onStart: async function ({ args, message, event, commandName, getLang }) {
+    // Regex to check for valid YouTube URL.
     const checkurl = /^(?:https?:\/\/)?(?:m\.|www\.)?(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))((\w|-){11})(?:\S+)?$/;
-    const urlYtb = checkurl.test(args[0]);
-    if (urlYtb) {
-      const infoVideo = await getVideoInfo(args[0]);
-      handle({ infoVideo, message, downloadFile, getLang });
+    const isUrl = checkurl.test(args[0]);
+
+    if (isUrl) {
+      // Extract the video ID from the URL.
+      const videoIdMatch = args[0].match(checkurl);
+      const idvideo = videoIdMatch[1];
+
+      // Download audio directly from the video.
+      const response = await axios.get(`${await baseApiUrl()}/ytdl?songID=${idvideo}`);
+      const desiredFormat = response.data.adaptiveFormats.find(
+        format => format.mimeType.includes("audio/webm") && format.audioQuality === "AUDIO_QUALITY_LOW"
+      ) || response.data.adaptiveFormats.find(
+        format => format.mimeType.includes("audio/webm") && format.audioQuality === "AUDIO_QUALITY_MEDIUM"
+      );
+      if (!desiredFormat) return message.reply(getLang("noAudio"));
+      const title = response.data.title;
+      const vid = desiredFormat.url;
+      const savePath = `${__dirname}/assests/${idvideo}_${Date.now()}.mp3`;
+      const writer = fs.createWriteStream(savePath);
+
+      // Unsending the previous prompt if any.
+      await message.unsend(event.messageID);
+
+      const responseStream = await axios({
+        url: vid,
+        method: 'GET',
+        responseType: 'stream'
+      });
+      responseStream.data.pipe(writer);
+      writer.on('finish', () => {
+        message.reply({
+          body: title,
+          attachment: fs.createReadStream(savePath)
+        }, (err) => {
+          if (err) return message.reply(getLang("error", err.message));
+          fs.unlinkSync(savePath);
+        });
+      });
+      writer.on('error', (err) => {
+        fs.unlinkSync(savePath);
+        return message.reply(getLang("error", err.message));
+      });
       return;
     }
+
+    // If not a valid URL, treat the input as a search query.
     let keyWord = args.join(" ");
     keyWord = keyWord.includes("?feature=share") ? keyWord.replace("?feature=share", "") : keyWord;
     const maxResults = 6;
@@ -51,8 +93,8 @@ module.exports = {
     } catch (err) {
       return message.reply(getLang("error", err.message));
     }
-    if (result.length == 0)
-      return message.reply(getLang("noResult", keyWord));
+    if (result.length === 0) return message.reply(getLang("noResult", keyWord));
+
     let msg = "";
     let i = 1;
     const thumbnails = [];
@@ -84,12 +126,14 @@ module.exports = {
       ) || response.data.adaptiveFormats.find(
         format => format.mimeType.includes("audio/webm") && format.audioQuality === "AUDIO_QUALITY_MEDIUM"
       );
+      if (!desiredFormat) return message.reply(getLang("noAudio"));
       const title = response.data.title;
       const vid = desiredFormat.url;
-      console.log(vid)
       const savePath = `${__dirname}/assests/${idvideo}_${Date.now()}.mp3`;
       const writer = fs.createWriteStream(savePath);
-await message.unsend(Reply.messageID)
+
+      await message.unsend(Reply.messageID);
+
       const responseStream = await axios({
         url: vid,
         method: 'GET',
@@ -100,18 +144,15 @@ await message.unsend(Reply.messageID)
         message.reply({
           body: title,
           attachment: fs.createReadStream(savePath)
-        }, async (err) => {
-          if (err)
-            return message.reply(getLang("error", err.message));
+        }, (err) => {
+          if (err) return message.reply(getLang("error", err.message));
           fs.unlinkSync(savePath);
         });
       });
-
       writer.on('error', (err) => {
         fs.unlinkSync(savePath);
         return message.reply(getLang("error", err.message));
       });
-
     } else {
       message.reply("Invalid choice. Please enter a number between 1 and 6.");
     }
@@ -146,6 +187,7 @@ async function search(keyWord) {
   }
 }
 
+// You may implement getVideoInfo here if needed later.
 async function getVideoInfo(url) {
-  //pore korbo😋.
-}
+  // To be implemented later if required.
+      }
