@@ -1,55 +1,58 @@
-const axios = require ("axios");
-const fs = require ("fs-extra");
+const { getStreamFromURL } = global.utils;
 
 module.exports = {
   config: {
-    name: "pair3",
-    aliases: [],
-    version: "1.0",
-    author: "OTINXSANDIP",
-    countDown: 5,
-    role: 0,
-    shortDescription: " ",
-    longDescription: "",
+    name: "pairv3",
+    version: "1.1",
+    author: "Rulex-al LOUFI (Modified by ChatGPT)",
+    shortDescription: {
+      en: "Pair up with a mentioned user or a random girl 😗",
+      vi: ""
+    },
     category: "love",
-    guide: "{pn}"
+    guide: "{prefix}pair [mention user]"
   },
 
-  onStart: async function({ api, event, threadsData, usersData }) {
+  onStart: async function({ event, threadsData, message, usersData }) {
+    const uidI = event.senderID;
+    const mentions = event.mentions;
+    const threadData = await threadsData.get(event.threadID);
+    const name1 = await usersData.getName(uidI);
+    const avatarUrl1 = await usersData.getAvatarUrl(uidI);
 
-    const { threadID, messageID, senderID } = event;
-    const { participantIDs } = await api.getThreadInfo(threadID);
-    var tle = Math.floor(Math.random() * 101);
-    var namee = (await usersData.get(senderID)).name
-    const botID = api.getCurrentUserID();
-    const listUserID = participantIDs.filter(ID => ID != botID && ID != senderID);
-    var id = listUserID[Math.floor(Math.random() * listUserID.length)];
-    var name = (await usersData.get(id)).name
-    var arraytag = [];
-    arraytag.push({ id: senderID, tag: namee });
-    arraytag.push({ id: id, tag: name });
+    let uid2, name2, avatarUrl2;
 
-    let Avatar = (await axios.get(`https://graph.facebook.com/${senderID}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(__dirname + "/cache/avt.png", Buffer.from(Avatar, "utf-8"));
+    if (Object.keys(mentions).length > 0) {
+      // If a user is mentioned, pair with them
+      uid2 = Object.keys(mentions)[0]; // Get first mentioned user
+      name2 = await usersData.getName(uid2);
+      avatarUrl2 = await usersData.getAvatarUrl(uid2);
+    } else {
+      // If no mention, pair with a random female from the group
+      const members = threadData.members.filter(member => member.gender === "FEMALE" && member.inGroup);
+      if (members.length === 0) return message.reply("No eligible girls found in the group! 🥲");
 
-    let gifLove = (await axios.get(`https://i.ibb.co/y4dWfQq/image.gif`, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(__dirname + "/cache/giflove.png", Buffer.from(gifLove, "utf-8"));
+      const randomIndex = Math.floor(Math.random() * members.length);
+      const randomMember = members[randomIndex];
+      uid2 = randomMember.userID;
+      name2 = await usersData.getName(uid2);
+      avatarUrl2 = await usersData.getAvatarUrl(uid2);
+    }
 
-    let Avatar2 = (await axios.get(`https://graph.facebook.com/${id}/picture?width=512&height=512&access_token=6628568379%7Cc1e620fa708a1d5696fb991c1bde5662`, { responseType: "arraybuffer" })).data;
-    fs.writeFileSync(__dirname + "/cache/avt2.png", Buffer.from(Avatar2, "utf-8"));
+    const lovePercentage = Math.floor(Math.random() * 36) + 65;
+    const compatibilityPercentage = Math.floor(Math.random() * 36) + 65;
 
-    var imglove = [];
+    message.reply({
+      body: `💞 Everyone, congratulate the new couple! 💞
+❤️ ${name1} 💕 ${name2} ❤️
+💘 Love Percentage: **${lovePercentage}%**  
+💕 Compatibility: **${compatibilityPercentage}%**  
 
-    imglove.push(fs.createReadStream(__dirname + "/cache/avt.png"));
-    imglove.push(fs.createReadStream(__dirname + "/cache/giflove.png"));
-    imglove.push(fs.createReadStream(__dirname + "/cache/avt2.png"));
-
-    var msg = {
-      body: `🥰Successful pairing!\n💌Wish you two hundred years of happiness\n💕Double ratio: ${tle}%\n${namee} 💓 ${name}`,
-      mentions: arraytag,
-      attachment: imglove
-    };
-
-    return api.sendMessage(msg, event.threadID, event.messageID);
+🔥 Best wishes to this lovely couple! 🥳`,
+      attachment: [
+        await getStreamFromURL(avatarUrl1),
+        await getStreamFromURL(avatarUrl2)
+      ]
+    });
   }
 };
