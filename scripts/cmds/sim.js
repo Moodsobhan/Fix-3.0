@@ -1,5 +1,3 @@
-const enabledThreads = new Set(); // Stores thread IDs where auto-reply is enabled
-
 module.exports = {
   config: {
     name: "sim",
@@ -8,43 +6,13 @@ module.exports = {
     role: 0,
     description: "Auto-replies like a real Banglish chat",
     category: "fun",
-    guide: "{pn} on  |  {pn} off"
-  },
-
-  // Enable/Disable Auto-Reply
-  onStart: async function ({ message, event, api }) {
-    const threadID = event.threadID;
-    const args = message.body?.toLowerCase().split(" ");
-    console.log(`Received command: ${message.body}`); // Debug log
-    
-    if (!args || args.length < 2) {
-      return api.sendMessage("❓ Usage: {pn} on  |  {pn} off", threadID);
-    }
-
-    if (args[1] === "on") {
-      if (enabledThreads.has(threadID)) {
-        return api.sendMessage("🚫 Auto-reply is already ON in this thread!", threadID);
-      }
-      enabledThreads.add(threadID);
-      console.log(`Auto-reply enabled for thread: ${threadID}`); // Debug log
-      return api.sendMessage("✅ Sim Auto-Reply has been enabled for this thread!", threadID);
-    } else if (args[1] === "off") {
-      if (!enabledThreads.has(threadID)) {
-        return api.sendMessage("🚫 Auto-reply is already OFF in this thread!", threadID);
-      }
-      enabledThreads.delete(threadID);
-      console.log(`Auto-reply disabled for thread: ${threadID}`); // Debug log
-      return api.sendMessage("❌ Sim Auto-Reply has been disabled for this thread.", threadID);
-    } else {
-      return api.sendMessage("❓ Invalid command. Usage: {pn} on  |  {pn} off", threadID);
-    }
+    guide: "No prefix required"
   },
 
   // Auto-reply when someone texts
   onChat: async function ({ event, api }) {
     const { threadID, body, senderID } = event;
-    if (!enabledThreads.has(threadID)) return;  
-    if (senderID === global.botID) return;     
+    if (senderID === global.botID) return;  // Ignore bot's own messages
 
     const messageText = body.toLowerCase().trim();
 
