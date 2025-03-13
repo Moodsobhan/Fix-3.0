@@ -1,72 +1,83 @@
-const axios = require("axios");
-const fs = require("fs-extra");
-const baseApiUrl = async () => {
-  const base = await axios.get(
-    `https://raw.githubusercontent.com/Blankid018/D1PT0/main/baseApiUrl.json`,
-  );
-  return base.data.api;
-};
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
   config: {
-    name: "alldl",
-    version: "1.0.5",
-    author: "Dipto",
-    countDown: 2,
-    role: 0,
-    description: {
-      en: "𝗗𝗼𝘄𝗻𝗹𝗼𝗮𝗱 𝘃𝗶𝗱𝗲𝗼 𝗳𝗿𝗼𝗺 𝘁𝗶𝗸𝘁𝗼𝗸, 𝗳𝗮𝗰𝗲𝗯𝗼𝗼𝗸, 𝗜𝗻𝘀𝘁𝗮𝗴𝗿𝗮𝗺, 𝗬𝗼𝘂𝗧𝘂𝗯𝗲, 𝗮𝗻𝗱 𝗺𝗼𝗿𝗲",
-    },
-    category: "𝗠𝗘𝗗𝗜𝗔",
-    guide: {
-      en: "[video_link]",
-    },
+    name: 'Alldl',
+    category: 'alldl',
+    author: 'Nyx'
   },
-  onStart: async function ({ api, args, event }) {
-    const dipto = event.messageReply?.body || args[0];
-    if (!dipto) {
-      api.setMessageReaction("❌", event.messageID, (err) => {}, true);
-    }
-    try {
-      api.setMessageReaction("⏳", event.messageID, (err) => {}, true);
-      const { data } = await axios.get(`${await baseApiUrl()}/alldl?url=${encodeURIComponent(dipto)}`);
-      const filePath = __dirname + `/cache/vid.mp4`;
-      if(!fs.existsSync(filePath)){
-        fs.mkdir(__dirname + '/cache');
-      }
-      const vid = (
-        await axios.get(data.result, { responseType: "arraybuffer" })
-      ).data;
-      fs.writeFileSync(filePath, Buffer.from(vid, "utf-8"));
-      const url = await global.utils.shortenURL(data.result);
-      api.setMessageReaction("✅", event.messageID, (err) => {}, true);
-      api.sendMessage({
-          body: `${data.cp || null}\nLink = ${url || null}`,
-          attachment: fs.createReadStream(filePath),
-        },
-        event.threadID,
-        () => fs.unlinkSync(filePath),
-        event.messageID
-      );
-      if (dipto.startsWith("https://i.imgur.com")) {
-        const dipto3 = dipto.substring(dipto.lastIndexOf("."));
-        const response = await axios.get(dipto, {
-          responseType: "arraybuffer",
+  onStart: async ({}) => {
+    
+  },
+  onChat: async ({ args, message, api }) => {
+    const url = args.join(' ');
+    if (
+      url.startsWith("https://vt.tiktok.com") ||
+      url.startsWith("https://vm.tiktok.com") ||
+      url.startsWith("https://www.tiktok.com/") ||
+      url.startsWith("https://www.facebook.com") ||
+      url.startsWith("https://fb.watch") ||
+      url.startsWith("https://www.instagram.com/") ||
+      url.startsWith("https://www.instagram.com/p/") ||
+      url.startsWith("https://x.com/") ||
+      url.startsWith("https://twitter.com/") ||
+      url.startsWith("https://pin.it/")
+    ) {
+      const loadingMessage = await message.reply('Downloading video, please wait...');
+      try {
+        const { data } = await axios.get(`https://www.noobz-api.rf.gd/api/alldl?url=${url}`);
+        const downloadLink = data.downloadLink; 
+        const tempFilePath = path.join(__dirname, 'temp_video.mp4');
+        const writer = fs.createWriteStream(tempFilePath);
+        const videoResponse = await axios({ url: downloadLink, responseType: 'stream' });
+        videoResponse.data.pipe(writer);
+        
+        await new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
         });
-        const filename = __dirname + `/cache/dipto${dipto3}`;
-        fs.writeFileSync(filename, Buffer.from(response.data, "binary"));
-        api.sendMessage({
-            body: `✅ | Downloaded from link`,
-            attachment: fs.createReadStream(filename),
-          },
-          event.threadID,
-          () => fs.unlinkSync(filename),
-          event.messageID,
-        );
+        await message.reply({
+          body: 'Here is your video:',
+          attachment: fs.createReadStream(tempFilePath)
+        });
+        await api.unsendMessage(loadingMessage.messageID);
+        fs.unlink(tempFilePath, (err) => {
+          if (err) console.error('Error deleting temp file:', err);
+        });
+      } catch (error) {
+        console.error('Error downloading video:', error);
+        await message.reply('Failed to download the video.');
+        await api.unsendMessage(loadingMessage.messageID);
       }
-    } catch (error) {
-      api.setMessageReaction("❎", event.messageID, (err) => {}, true);
-      api.sendMessage(error.message, event.threadID, event.messageID);
+    } else if (url.startsWith("https://youtube.com/") || url.startsWith("https://youtu.be/")) {
+      const loadingMessage = await message.reply('Downloading YouTube video, please wait...');
+      try {
+        const { data } = await axios.get(`https://fastapi-nyx-production.up.railway.app/y?url=${encodeURIComponent(url)}&type=mp4`);
+        const videoUrl = data.url;
+        const tempFilePath = path.join(__dirname, 'nyx_video.mp4');
+        const writer = fs.createWriteStream(tempFilePath);
+        const videoResponse = await axios({ url: videoUrl, responseType: 'stream' });
+        videoResponse.data.pipe(writer);
+        
+        await new Promise((resolve, reject) => {
+          writer.on('finish', resolve);
+          writer.on('error', reject);
+        });
+        await message.reply({
+          body: 'Here is your YouTube video:',
+          attachment: fs.createReadStream(tempFilePath)
+        });
+        await api.unsendMessage(loadingMessage.messageID);
+        fs.unlink(tempFilePath, (err) => {
+          if (err) console.error('Error deleting temp file:', err);
+        });
+      } catch (error) {
+        console.error('Error downloading YouTube video:', error);
+        await message.reply('Failed to download the YouTube video.');
+        await api.unsendMessage(loadingMessage.messageID);
+      }
     }
-  },
+  }
 };
