@@ -1,70 +1,55 @@
 const axios = require("axios");
-const fs = require("fs-extra");
-const path = require("path");
 
-module.exports = {
-  config: {
-    name: "pinterest",
-    aliases: ["pin"],
-    version: "1.0.2",
-    author: "JVB",
-    role: 0,
-    countDown: 50,
-    shortDescription: {
-      en: "Search for images on Pinterest"
-    },
-    longDescription: {
-      en: ""
-    },
-    category: "Search",
-    guide: {
-      en: "{prefix}pinterest <search query> -<number of images>"
+module.exports.config = {
+  name: "pinterest",
+  category: "TOOLS",
+  author: "Nyx||Romim",
+};
+
+module.exports.onStart = async function ({ api, event, args }) {
+  if (args.length < 3 || args[args.length - 2] !== "-") {
+    return api.sendMessage("⚠️ Use the correct format: pinterest <search> - <limit>\nExample: pinterest anime - 6", event.threadID);
+  }
+  const limit = parseInt(args[args.length - 1]);
+  if (isNaN(limit) || limit <= 0 || limit > 40) {
+    return api.sendMessage("⚠️ Invalid limit! Choose a number between 1-40.", event.threadID);
+  }
+
+  const query = args.slice(0, args.length - 2).join(" ");
+
+  try {
+    const response = await axios.get(`https://www.noobz-api.rf.gd/api/pinterest?search=${query}`);
+    const { data } = response.data;
+
+    if (!data || data.length === 0) {
+      return api.sendMessage("❌ No results found for your query.", event.threadID);
     }
-  },
 
-  onStart: async function ({ api, event, args, usersData }) {
-    try {
-      const userID = event.senderID;
-
-      const keySearch = args.join(" ");
-      if (!keySearch.includes("-")) {
-        return api.sendMessage(`Please enter the search query and number of images to return in the format: ${this.config.guide.en}`, event.threadID, event.messageID);
-      }
-      const keySearchs = keySearch.substr(0, keySearch.indexOf('-')).trim();
-      const numberSearch = parseInt(keySearch.split("-").pop().trim()) || 6;
-
-      const res = await axios.get(`https://celestial-dainsleif-v2.onrender.com/pinterest?pinte=${encodeURIComponent(keySearchs)}`);
-      const data = res.data;
-
-      if (!data || !Array.isArray(data) || data.length === 0) {
-        return api.sendMessage(`No image data found for "${keySearchs}". Please try another search query.`, event.threadID, event.messageID);
-      }
-
-      const imgData = [];
-
-      for (let i = 0; i < Math.min(numberSearch, data.length); i++) {
-        const imageUrl = data[i].image;
-
+    const selectedImages = data.slice(0, Math.min(limit, data.length));
+    const attachments = await Promise.all(
+      selectedImages.map(async (imageUrl) => {
         try {
-          const imgResponse = await axios.get(imageUrl, { responseType: 'arraybuffer' });
-          const imgPath = path.join(__dirname, 'cache', `${i + 1}.jpg`);
-          await fs.outputFile(imgPath, imgResponse.data);
-          imgData.push(fs.createReadStream(imgPath));
-        } catch (error) {
-          console.error(error);
-          // Handle image fetching errors (skip the problematic image)
+          return await global.utils.getStreamFromUrl(imageUrl);
+        } catch (err) {
+          console.error(`Failed to stream image: ${imageUrl}`, err);
+          return null;
         }
-      }
+      })
+    );
 
-      await api.sendMessage({
-        attachment: imgData,
-        body: `Here are the top ${imgData.length} image results for "${keySearchs}":`
-      }, event.threadID, event.messageID);
+    const validAttachments = attachments.filter((stream) => stream !== null);
 
-      await fs.remove(path.join(__dirname, 'cache'));
-    } catch (error) {
-      console.error(error);
-      return api.sendMessage(`An error occurred. Please try again later.`, event.threadID, event.messageID);
+    if (validAttachments.length === 0) {
+      return api.sendMessage("❌ No valid images to send.", event.threadID);
     }
+
+    return api.sendMessage(
+      { attachment: validAttachments },
+      event.threadID
+    );
+
+  } catch (error) {
+    console.error(error);
+    return api.sendMessage("❌ Failed to fetch data. Please try again later.", event.threadID);
   }
 };
