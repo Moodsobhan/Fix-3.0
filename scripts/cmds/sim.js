@@ -6,7 +6,7 @@ module.exports = {
     version: "2.2",
     author: "Your Name",
     role: 0,
-    description: "Auto-replies & reacts like a real Banglish chat",
+    description: "Auto-replies like a real Banglish chat",
     category: "fun",
     guide: "{pn} on  |  {pn} off"
   },
@@ -14,19 +14,19 @@ module.exports = {
   // Enable/Disable Auto-Reply
   onStart: async function ({ message, event, api }) {
     const threadID = event.threadID;
-    const args = message.body.toLowerCase().split(" ");
+    const args = message.body?.toLowerCase().split(" ");
+    if (!args || args.length < 2) return api.sendMessage("Usage: {pn} on  |  {pn} off", threadID);
+    
     if (args[1] === "on") {
       enabledThreads.add(threadID);
       return api.sendMessage("✅ Sim Auto-Reply ON!", threadID);
     } else if (args[1] === "off") {
       enabledThreads.delete(threadID);
       return api.sendMessage("❌ Sim Auto-Reply OFF!", threadID);
-    } else {
-      return api.sendMessage("Usage: {pn} on  |  {pn} off", threadID);
     }
   },
 
-  // Auto-reply & react when someone texts
+  // Auto-reply when someone texts
   onChat: async function ({ event, api }) {
     const { threadID, messageID, body, senderID } = event;
     if (!enabledThreads.has(threadID)) return;  
@@ -66,7 +66,7 @@ module.exports = {
       "chal flirt kori": "Tumi shuru koro, ami ready! 😏"
     };
 
-    // Random extra replies
+    // Extra replies
     const extraReplies = [
       "Mama, ektu tension ase! 😔",
       "Arre baba, tui valo to? 😏",
@@ -97,19 +97,10 @@ module.exports = {
       "Tor smile ta full charming! 😍"
     ];
 
-    // Emoji list for reactions
-    const emojis = ["😂", "🤣", "😍", "😎", "🤩", "🥳", "😜", "🤔", "😇", "💀",
-                    "🙄", "😏", "👀", "🔥", "💖", "💯", "🫡", "🤪", "🥰", "😡"];
-
+    // Determine the reply
     let replyText = replies[messageText] || extraReplies[Math.floor(Math.random() * extraReplies.length)];
 
-    // Pick a random emoji reaction
-    let reactEmoji = emojis[Math.floor(Math.random() * emojis.length)];
-
-    // React to the message
-    api.setMessageReaction(reactEmoji, messageID, () => {}, true);
-
     // Send the auto-reply
-    api.sendMessage(replyText + " " + reactEmoji, threadID);
+    api.sendMessage(replyText, threadID);
   }
 };
