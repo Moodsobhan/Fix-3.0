@@ -15,20 +15,30 @@ module.exports = {
   onStart: async function ({ message, event, api }) {
     const threadID = event.threadID;
     const args = message.body?.toLowerCase().split(" ");
-    if (!args || args.length < 2) return api.sendMessage("Usage: {pn} on  |  {pn} off", threadID);
-    
+    if (!args || args.length < 2) {
+      return api.sendMessage("❓ Usage: {pn} on  |  {pn} off", threadID);  // Provide guidance if args are invalid
+    }
+
     if (args[1] === "on") {
+      if (enabledThreads.has(threadID)) {
+        return api.sendMessage("🚫 Auto-reply is already ON in this thread!", threadID); // Prevent re-enabling if already on
+      }
       enabledThreads.add(threadID);
-      return api.sendMessage("✅ Sim Auto-Reply ON!", threadID);
+      return api.sendMessage("✅ Sim Auto-Reply has been enabled for this thread!", threadID); // Confirm enabling
     } else if (args[1] === "off") {
+      if (!enabledThreads.has(threadID)) {
+        return api.sendMessage("🚫 Auto-reply is already OFF in this thread!", threadID); // Prevent disabling if already off
+      }
       enabledThreads.delete(threadID);
-      return api.sendMessage("❌ Sim Auto-Reply OFF!", threadID);
+      return api.sendMessage("❌ Sim Auto-Reply has been disabled for this thread.", threadID); // Confirm disabling
+    } else {
+      return api.sendMessage("❓ Invalid command. Usage: {pn} on  |  {pn} off", threadID); // Invalid command input
     }
   },
 
   // Auto-reply when someone texts
   onChat: async function ({ event, api }) {
-    const { threadID, messageID, body, senderID } = event;
+    const { threadID, body, senderID } = event;
     if (!enabledThreads.has(threadID)) return;  
     if (senderID === global.botID) return;     
 
