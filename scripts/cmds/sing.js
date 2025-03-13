@@ -1,83 +1,74 @@
-const axios = require("axios");
-const fs = require('fs-extra');
-const path = require('path');
-const { getStreamFromURL, shortenURL, randomString } = global.utils;
-const ytdl = require("ytdl-core");
-const yts = require("yt-search");
-
-async function sing(api, event, args, message) {
-   api.setMessageReaction("⏳", event.messageID, (err) => {}, true);
-  try {
-    let title = '';
-
-  
-    const extractShortUrl = async () => {
-      const attachment = event.messageReply.attachments[0];
-      if (attachment.type === "video" || attachment.type === "audio") {
-        return attachment.url;
-      } else {
-        throw new Error("Invalid attachment type.");
-      }
-    };
-
-   
-    if (event.messageReply && event.messageReply.attachments && event.messageReply.attachments.length > 0) {
-      const shortUrl = await extractShortUrl();
-      const musicRecognitionResponse = await axios.get(`https://youtube-music-sooty.vercel.app/kshitiz?url=${encodeURIComponent(shortUrl)}`);
-      title = musicRecognitionResponse.data.title;
-    } else if (args.length === 0) {
-      message.reply("Please provide a song name.");
-      return;
-    } else {
-      title = args.join(" ");
-    }
-
- 
-    const searchResults = await yts(title);
-    if (!searchResults.videos.length) {
-      message.reply("No song found for the given query.");
-      return;
-    }
-
-    const videoUrl = searchResults.videos[0].url;
-    const stream = await ytdl(videoUrl, { filter: "audioonly" });
-
-    const fileName = `lado.mp3`;
-    const filePath = path.join(__dirname, "cache", fileName);
-    const writer = fs.createWriteStream(filePath);
-
-    stream.pipe(writer);
-
-    writer.on('finish', () => {
-      const audioStream = fs.createReadStream(filePath);
-      message.reply({ body: `✅𝐒𝐨𝐧𝐠 𝐒𝐞𝐧𝐝 𝐁𝐨𝐱 𝐒𝐮𝐜𝐜𝐞𝐬𝐬𝐟𝐮𝐥\n\n🔗 Playing: ${title}`, attachment: audioStream });
-      api.setMessageReaction("✅", event.messageID, () => {}, true);
-    });
-
-    writer.on('error', (error) => {
-      console.error("Error:", error);
-      message.reply("error");
-    });
-  } catch (error) {
-    console.error("Error:", error);
-    message.reply("error");
-  }
-}
-
+const axios = require('axios');
+const fs = require('fs');
+const a = `https://www.noobz-api.rf.gd/`;
 module.exports = {
   config: {
-    name: "sing",
-    version: "1.0",
-    aliases: ["sound", "song"],
-    author: "MR.AYAN",
-    countDown: 10,
-    role: 0,
-    shortDescription: "play music from yt",
-    longDescription: "play music from yt support audio recogonization.",
-    category: "media",
-    guide: "{p}sing {msuicName} or reply to audio or vdo by {p}sing"
+    name: 'sing',
+    category: 'MEDIA',
+    author: 'Nyx',
   },
-  onStart: function ({ api, event, args, message }) {
-    return sing(api, event, args, message);
-  }
-}; 
+
+  onStart: async ({ message, args }) => {
+    const query = args.join(' ');
+    if (!query) return message.reply("Please provide a search query!");
+
+    try {
+      const searchResponse = await axios.get(`${a}api/yts?name=${query}`);
+      const data = searchResponse.data.data.slice(0, 6);
+      const thumbnails = await Promise.all(
+        data.map((item) => global.utils.getStreamFromUrl(item.thumbnail))
+      );
+
+      let body = '';
+      data.forEach((item, index) => {
+        body += `${index + 1}. ${item.name}\nDuration: ${item.dur}\n\n`;
+      });
+
+      const reply = await message.reply({
+        body: `Search Results:\n\n${body}\nPlease select a number (1-6).`,
+        attachment: thumbnails,
+      });
+
+      global.GoatBot.onReply.set(reply.messageID, {
+        commandName: 'sing',
+        messageID: reply.messageID,
+        result: data,
+      });
+    } catch (error) {
+      message.reply(`Error: ${error.message}`);
+    }
+  },
+
+  onReply: async ({ Reply, message, event }) => {
+    const { result, messageID } = Reply;
+    const { senderID, body } = event;
+
+    const choice = parseInt(body.trim());
+    if (isNaN(choice) || choice < 1 || choice > 6) {
+      return message.reply("Please select a valid number between 1 and 5.");
+    }
+
+    const selectedVideo = result[choice - 1];
+    if (!selectedVideo) {
+      return message.reply("Invalid choice. Please try again.");
+    }
+    message.unsend(messageID);
+
+    try {
+   const id = selectedVideo.id;
+      const response = await axios.get(`https://fastapi-nyx-production.up.railway.app/y?url=https://www.youtube.com/watch?v=${id}&type=mp3`)
+  const songUrl = response.data.url;
+      const filePath = __dirname + `/cache/${selectedVideo.name}.mp3`;
+      fs.writeFileSync(filePath, Buffer.from((await axios.get(songUrl, { responseType: "arraybuffer" })).data, "binary"))
+      const tinyUrlResponse = await axios.get(`https://tinyurl.com/api-create.php?url=${songUrl}`);
+      const tinyUrl = tinyUrlResponse.data;
+
+      await message.reply({
+        body: `Here's your requested song: ${selectedVideo.name}\nDuration: ${selectedVideo.dur}\nDownload Link: ${tinyUrl}`,
+        attachment: fs.createReadStream(filePath)
+      }, () => fs.unlinkSync(filePath));
+    } catch (error) {
+      message.reply("Error: Unable to fetch the song. Please try again later.");
+    }
+  },
+};
