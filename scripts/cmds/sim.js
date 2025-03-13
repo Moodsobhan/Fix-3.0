@@ -1,48 +1,115 @@
+const enabledThreads = new Set(); // Stores thread IDs where auto-reply is enabled
+
 module.exports = {
   config: {
     name: "sim",
-    version: "1.0",
-    author: "YourName",
-    shortDescription: "Auto-replies to messages when enabled",
-    category: "AutoReply",
-    guide: "{p}sim on  |  {p}sim off"
+    version: "2.2",
+    author: "Your Name",
+    role: 0,
+    description: "Auto-replies & reacts like a real Banglish chat",
+    category: "fun",
+    guide: "{pn} on  |  {pn} off"
   },
 
-  // Toggle auto-reply ON/OFF using prefix command
-  onStart: async function({ event, api, args }) {
-    const toggle = args[0] ? args[0].toLowerCase() : "";
-    if (toggle === "on") {
-      global.autoReplySim = true;
-      return api.sendMessage("✅ Auto-reply is now ON.", event.threadID);
-    } else if (toggle === "off") {
-      global.autoReplySim = false;
-      return api.sendMessage("❌ Auto-reply is now OFF.", event.threadID);
+  // Enable/Disable Auto-Reply
+  onStart: async function ({ message, event, api }) {
+    const threadID = event.threadID;
+    const args = message.body.toLowerCase().split(" ");
+    if (args[1] === "on") {
+      enabledThreads.add(threadID);
+      return api.sendMessage("✅ Sim Auto-Reply ON!", threadID);
+    } else if (args[1] === "off") {
+      enabledThreads.delete(threadID);
+      return api.sendMessage("❌ Sim Auto-Reply OFF!", threadID);
     } else {
-      return api.sendMessage("Usage: sim on  |  sim off", event.threadID);
+      return api.sendMessage("Usage: {pn} on  |  {pn} off", threadID);
     }
   },
 
-  // Auto-reply to every message when enabled
-  onChat: async function({ event, message }) {
-    try {
-      if (!global.autoReplySim) return;  // Only reply if auto-reply is enabled
-      if (event.senderID === global.botID) return; // Prevent bot from replying to itself
+  // Auto-reply & react when someone texts
+  onChat: async function ({ event, api }) {
+    const { threadID, messageID, body, senderID } = event;
+    if (!enabledThreads.has(threadID)) return;  
+    if (senderID === global.botID) return;     
 
-      const msgText = event.body ? event.body.toLowerCase().trim() : "";
+    const messageText = body.toLowerCase().trim();
 
-      // Predefined auto-replies
-      if (msgText.includes("asalamualikum")) {
-        message.reply("walikumasalam");
-      } else if (msgText.includes("kemon aso")) {
-        message.reply("kono moto baicha asi bot er jibon 6h pore pore off hoiya jai");
-      } else if (msgText.includes("kire shayan koi")) {
-        message.reply("Shayan hagte gase mama!!!!");
-      } else {
-        message.reply("Sim, I am here!");
-      }
-    } 
-    catch (error) {
-      console.error("Error in auto-reply onChat:", error);
-    }
+    // Replies dictionary
+    const replies = {
+      "asalamualikum": "Walaikum Assalam ❤️",
+      "ki obosta": "Bot er obostha moja nai, tor?",
+      "kemon aso": "Arokomi, tumi?",
+      "ki khobor": "Khobor thik nai, tor?",
+      "tui ki koros": "Bot er jibon, message dekhi r auto reply dei 😌",
+      "tui gay": "Kha*kir pola tor bap gay 🏳️‍🌈",
+      "hajir hosso": "Hajir! Tor ki kaj?",
+      "shayan koi": "Shayan hagte gase mama!!! 🤣",
+      "tor bou koi": "Bot er bou nai, tumi khoj dilay pabo? 😆",
+      "i love you bot": "Kha**kir pola hijra, ja vag ami bot, manush nah 😡",
+      "biya korbi": "Biya korbo na, tumi propose dile vaba jabe 😏",
+      "bokachoda": "Boka na, bot choda 😜",
+      "r u single": "Bot er biya hoyna, ami single life enjoy kori 🤣",
+      "tor baba koi": "Baba offline, server er bill dite gesilo 😆",
+      "beta tor kotha bujhi na": "Bujhar chesta kor, matha thanda rakh! 😌",
+      "ei tui ki goru": "Goru na, bot! Tobe tor shathe chinta kori 🐄",
+      "ami tor gf": "Bot er GF nai, tumi hoiba? 😜",
+      "tor matha thik ase": "Matha thik nai mama, server down hoise 😭",
+      "ki bondhu": "Bondhu tui? Valo asi mama?",
+      "game chal": "Ki game kheli mama? 🤔",
+      "tor jibon valo jachhe": "Bot er jibon e love nai, tai mojar nai 😔",
+      "facebook hack korbi": "Hack korte parina, kintu code likhte pari! 🤓",
+      "freefire chal": "Game kheli mama! 💥",
+      "aiya bondhu": "Aisi mama, tor ki dorkar?",
+      "bot re love korte mon chay": "Bot er love possible na, tor ekta GF khoj 😆",
+      "toke bhalobashi": "Mon chay tor kachhe boshe thaki! 😘",
+      "chal coffee khete jai": "Tumi invite dile chole asbo 😍",
+      "chal flirt kori": "Tumi shuru koro, ami ready! 😏"
+    };
+
+    // Random extra replies
+    const extraReplies = [
+      "Mama, ektu tension ase! 😔",
+      "Arre baba, tui valo to? 😏",
+      "Tor dost koi? Ajke toh dekhina! 🤔",
+      "Ai mama, GF koi? 😜",
+      "Besi pagla pagla korish na! 😠",
+      "Tui ki japani manga hero? 😆",
+      "Valo lagse tor shathe kotha bole 😍",
+      "Shotti bol, tui ki amar upor crush rekhchis? 😉",
+      "Arre mama, freefire jabi? 🔥",
+      "Ajke kono gossip nai? 😏",
+      "Flirt korte chai, kintu GF paisi na! 🥲",
+      "Tor moner moto manus koi mama? 😏",
+      "Toke miss kori na, but dekhle valo lage! 😜",
+      "Toke dekhle pagol hoye jai 😘",
+      "Meye der moto sundor hoye geli kobe? 😆",
+      "Eto sweet keno tumi? 🥰",
+      "Tor cheharar glow barse! Love choltesi? 🤭",
+      "Meye ra kothay? Akta dorkar 😏",
+      "Ajke kotha kom bolchis, dil dukhi? 🤔",
+      "Ai shun, ajke toh ekdom hot lagtesi! 🔥",
+      "Ki bondhu, kono meye GF korar plan ase? 😉",
+      "Ajke raat ta moja hobe, jodi chat e thakis! 😜",
+      "Mama, tor mon ekta cigarette er moto, ekbar jole uthle bujhtei parbi na! 😉",
+      "Toke dekhlei mon ektu ta chara uthe 😏",
+      "Ki re pagla, ekta song recommend kor? 🎶",
+      "Mama, jibon easy nite shik! 😎",
+      "Tor smile ta full charming! 😍"
+    ];
+
+    // Emoji list for reactions
+    const emojis = ["😂", "🤣", "😍", "😎", "🤩", "🥳", "😜", "🤔", "😇", "💀",
+                    "🙄", "😏", "👀", "🔥", "💖", "💯", "🫡", "🤪", "🥰", "😡"];
+
+    let replyText = replies[messageText] || extraReplies[Math.floor(Math.random() * extraReplies.length)];
+
+    // Pick a random emoji reaction
+    let reactEmoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+    // React to the message
+    api.setMessageReaction(reactEmoji, messageID, () => {}, true);
+
+    // Send the auto-reply
+    api.sendMessage(replyText + " " + reactEmoji, threadID);
   }
 };
